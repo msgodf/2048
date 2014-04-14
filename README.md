@@ -6,7 +6,7 @@ The original JavaScript version of the game is by Gabriele Cirulli (and others) 
 
 # Example
 
-```
+```clj
 (defn example-game
   []
   (print-grid
