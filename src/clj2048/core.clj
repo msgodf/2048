@@ -67,7 +67,7 @@
             (when (cell-available grid x y)
               [x y]))))
 
-;; from data.generators
+;; from data.generators, but with a java.util.Random as the first argument
 (defn uniform
   "Uniform distribution from lo (inclusive) to high (exclusive)."
   (^long [rnd lo hi] {:pre [(< lo hi)]}
@@ -97,41 +97,33 @@
 (defn can-merge
   [grid positions tile]
   (when (:next positions)
-    (let [next-tile (get-from-grid grid
-                                   (first (:next positions))
-                                   (second (:next positions)))]
-      ;; Check whether the position is in the grid
-      (when next-tile
-        (when (and next-tile
-                   (= (:value tile)
-                      (:value next-tile))
-                   (not (:previously-merged next-tile)))
-          next-tile)))))
+    (let [[x y] (:next positions)
+          next-tile (get-from-grid grid  x y)]
+      (when (and next-tile
+                 (= (:value tile)
+                    (:value next-tile))
+                 (not (:previously-merged next-tile)))
+        next-tile))))
 
 (defn move-single
   [grid x y v]
   (let [tile (get-from-grid grid x y)]
-    (if (not (nil? (:value tile)))
+    (if (:value tile)
       (let [positions (find-farthest-position grid x y v)]
-        (if positions
-          (if-let [next-tile (can-merge grid positions tile)]
-            (let [[nx ny] (:next positions)]
-              (-> grid
-                  (set-in-grid x y {:previously-merged false
-                                    :value nil})
-                  (set-in-grid nx ny {:previously-merged true
-                                      :value (+ (:value tile)
-                                                (:value next-tile))})))
-            (let [[nx ny] (:farthest positions)]
-
-              (if (and (= nx x) (= ny y))
-                grid
-                (-> grid
-                    (set-in-grid x y {:previously-merged false
-                                      :value nil})
-                    (set-in-grid nx ny {:previously-merged false
-                                        :value (:value tile)})))))
-          grid))
+        (if-let [next-tile (can-merge grid positions tile)]
+          (let [[nx ny] (:next positions)]
+            (-> grid
+                (set-in-grid x y {:previously-merged false
+                                  :value nil})
+                (set-in-grid nx ny {:previously-merged true
+                                    :value (+ (:value tile)
+                                              (:value next-tile))})))
+          (let [[nx ny] (:farthest positions)]
+            (-> grid
+                (set-in-grid x y {:previously-merged false
+                                  :value nil})
+                (set-in-grid nx ny {:previously-merged false
+                                    :value (:value tile)})))))
       grid)))
 
 (defn print-grid
@@ -173,6 +165,13 @@
                                                        :coordinates rest})))
                                                 {:grid grid
                                                  :coordinates (for [x xs y ys] [x y])})))))))
+
+(defn move-and-spawn
+  [grid direction rng]
+  (-> grid
+      (move direction)
+      (spawn rng)))
+
 (defn -main
   [& args]
   (println args))
