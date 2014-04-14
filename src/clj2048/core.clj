@@ -60,13 +60,32 @@
           (reverse ys)
           ys)}))
 
-
-
 (defn cell-available
   "Check whether the map at [x y] in the grid has a nil :value"
   [grid x y]
   (nil? (:value (get-from-grid grid x y))))
 
+(defn available-cells
+  [grid]
+  (remove nil?
+          (for [x (range (count (first grid)))
+                y (range (count grid))]
+            (when (cell-available grid x y)
+              [x y]))))
+
+;; from data.generators
+(defn uniform
+  "Uniform distribution from lo (inclusive) to high (exclusive)."
+  (^long [rnd lo hi] {:pre [(< lo hi)]}
+        (clojure.core/long (Math/floor (+ lo (* (.nextDouble rnd) (- hi lo)))))))
+
+(defn random-item
+  [generator coll]
+  (nth coll (uniform generator 0 (count coll))))
+
+(defn random-available-cell
+  [generator grid]
+  (random-item generator (available-cells grid)))
 
 (defn find-farthest-position
   "Find the last cell either before the edge of the grid, or another tile, from the specified position in the direction specified by the vector"
@@ -76,8 +95,10 @@
                           (for [v (map inc (range))]
                             [(+ ox (* dx v))
                              (+ oy (* dy v))]))]
-    (cond (= (count f) 0) {:farthest [ox oy] :next (first b)}
-          :otherwise {:farthest (last f) :next (first b)})))
+    (cond (= (count f) 0) {:farthest [ox oy]
+                           :next (first b)}
+          :otherwise {:farthest (last f)
+                      :next (first b)})))
 
 (defn can-merge
   [grid positions tile]
@@ -85,6 +106,7 @@
     (let [next-tile (get-from-grid grid
                                    (first (:next positions))
                                    (second (:next positions)))]
+      ;; Check whether the position is in the grid
       (when next-tile
         (when (and next-tile
                    (= (:value tile)
@@ -100,39 +122,55 @@
         (if positions
           (if-let [next-tile (can-merge grid positions tile)]
             (let [[nx ny] (:next positions)]
-              ;; set the tile to be previously merged
-              ;; set the tile position to be nil
-              ;; update the next tile value and set it's previously merged to true
               (-> grid
+                  (set-in-grid x y {:previously-merged false
+                                    :value nil})
                   (set-in-grid nx ny {:previously-merged true
                                       :value (+ (:value tile)
-                                                (:value next-tile))})
-                  (set-in-grid x y {:previously-merged false
-                                    :value nil})))
+                                                (:value next-tile))})))
             (let [[nx ny] (:farthest positions)]
-              (-> grid
-                  (set-in-grid nx ny {:previously-merged false
-                                      :value (:value tile)})
-                  (set-in-grid x y {:previously-merged false
-                                    :value nil}))))
+
+              (if (and (= nx x) (= ny y))
+                grid
+                (-> grid
+                    (set-in-grid x y {:previously-merged false
+                                      :value nil})
+                    (set-in-grid nx ny {:previously-merged false
+                                        :value (:value tile)})))))
           grid))
       grid)))
+
+(defn print-grid
+  [grid]
+  (println (clojure.string/join "\n" (map #(clojure.string/join (map (fn [v] (str (or (:value v) "-"))) %)) grid))))
+
+(defn spawn
+  [grid generator]
+  (let [[x y] (random-available-cell generator grid)]
+    (set-in-grid grid x y {:previously-merged false
+                           :value (random-item generator
+                                               (conj (repeat 9 2)
+                                                     4))})))
+
+(defn remove-merge-information
+  [grid]
+  (map #(map (fn [element] (assoc element :previously-merged false)) %) grid))
 
 (defn move
   [grid direction]
   (let [v (direction-to-vector direction)
         {xs :x ys :y} (build-traversals grid v)]
-    (:grid (first
-            (drop-while
-             #(not-empty (:coordinates %))
-             (iterate (fn [{:keys [grid coordinates] :as current}]
-                        (if (empty? coordinates)
-                          current
-                          (let [[[x y] & rest] coordinates]
-                            {:grid (move-single grid x y v)
-                             :coordinates rest})))
-                      {:grid grid
-                       :coordinates (for [x xs y ys] [x y])}))))
+    (remove-merge-information (:grid (first
+                                      (drop-while
+                                       #(not-empty (:coordinates %))
+                                       (iterate (fn [{:keys [grid coordinates] :as current}]
+                                                  (if (empty? coordinates)
+                                                    current
+                                                    (let [[[x y] & rest] coordinates]
+                                                      {:grid (move-single grid x y v)
+                                                       :coordinates rest})))
+                                                {:grid grid
+                                                 :coordinates (for [x xs y ys] [x y])})))))
 
     ;; actually, don't feed in the [x y] from the top, but from the bottom, along with the grid
     ;; because we're not generating an sequence of independent elements, but ones that are modifications of themselves
