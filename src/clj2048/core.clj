@@ -5,6 +5,147 @@
 ;; A grid
 ;;   some cells (an array of arrays - the elements are null at the start)
 ;;   insertTile,
+
+(defn within-bounds
+  [grid x y]
+  #_(prn "Within bounds? " x y (and (>= x 0)
+       (< x (count (first grid)))
+       (>= y 0)
+       (< y (count grid))))
+  (and (>= x 0)
+       (< x (count (first grid)))
+       (>= y 0)
+       (< y (count grid))))
+
+(defn get-from-grid
+  [grid x y]
+  (when (within-bounds grid x y)
+    (-> grid
+        (nth y)
+        (nth x))))
+
+(defn set-in-grid
+  [grid x y value]
+  (when (and (< x (count (first grid)))
+             (< y (count grid)))
+    (let [[before after] (split-at y
+                                   grid)]
+      (concat before
+              (vector (let [[before after] (split-at x
+                                                     (first after))]
+                        (concat before
+                                (vector value)
+                                (rest after))))
+              (rest after)))))
+
+(defn make-grid
+  [n]
+  (repeat n
+          (repeat n
+                  {:previously-merged false
+                   :value nil})))
+
+(defn direction-to-vector
+  [v]
+  (condp = v
+    0 {:x 0 :y -1}
+    1 {:x 1 :y 0}
+    2 {:x 0 :y 1}
+    3 {:x -1 :y 0}))
+
+(defn build-traversals
+  [grid v]
+  (let [xs (range (count (first grid)))
+        ys (range (count grid))]
+    {:x (if (= (:x v) 1)
+          (reverse xs)
+          xs)
+     :y (if (= (:y v) 1)
+          (reverse ys)
+          ys)}))
+
+
+
+(defn cell-available
+  "Check whether the map at [x y] in the grid has a nil :value"
+  [grid x y]
+  (nil? (:value (get-from-grid grid x y))))
+
+
+(defn find-farthest-position
+  "Find the last cell either before the edge of the grid, or another tile, from the specified position in the direction specified by the vector"
+  [grid ox oy {dx :x dy :y}]
+  (let [[f b] (split-with (fn [[x y]] (and (within-bounds grid x y)
+                                          (cell-available grid x y)))
+                          (for [v (map inc (range))]
+                            [(+ ox (* dx v))
+                             (+ oy (* dy v))]))]
+    (cond (= (count f) 0) {:farthest [ox oy] :next (first b)}
+          :otherwise {:farthest (last f) :next (first b)})))
+
+(defn can-merge
+  [grid positions tile]
+  (when (:next positions)
+    (let [next-tile (get-from-grid grid
+                                   (first (:next positions))
+                                   (second (:next positions)))]
+      (when next-tile
+        (when (and next-tile
+                   (= (:value tile)
+                      (:value next-tile))
+                   (not (:previously-merged next-tile)))
+          next-tile)))))
+
+(defn move-single
+  [grid x y v]
+  (let [tile (get-from-grid grid x y)]
+    (if (not (nil? (:value tile)))
+      (let [positions (find-farthest-position grid x y v)]
+        (if positions
+          (if-let [next-tile (can-merge grid positions tile)]
+            (let [[nx ny] (:next positions)]
+              ;; set the tile to be previously merged
+              ;; set the tile position to be nil
+              ;; update the next tile value and set it's previously merged to true
+              (-> grid
+                  (set-in-grid nx ny {:previously-merged true
+                                      :value (+ (:value tile)
+                                                (:value next-tile))})
+                  (set-in-grid x y {:previously-merged false
+                                    :value nil})))
+            (let [[nx ny] (:farthest positions)]
+              (-> grid
+                  (set-in-grid nx ny {:previously-merged false
+                                      :value (:value tile)})
+                  (set-in-grid x y {:previously-merged false
+                                    :value nil}))))
+          grid))
+      grid)))
+
+(defn move
+  [grid direction]
+  (let [v (direction-to-vector direction)
+        {xs :x ys :y} (build-traversals grid v)]
+    (:grid (first
+            (drop-while
+             #(not-empty (:coordinates %))
+             (iterate (fn [{:keys [grid coordinates] :as current}]
+                        (if (empty? coordinates)
+                          current
+                          (let [[[x y] & rest] coordinates]
+                            {:grid (move-single grid x y v)
+                             :coordinates rest})))
+                      {:grid grid
+                       :coordinates (for [x xs y ys] [x y])}))))
+
+    ;; actually, don't feed in the [x y] from the top, but from the bottom, along with the grid
+    ;; because we're not generating an sequence of independent elements, but ones that are modifications of themselves
+    ;; this should be broken out into a function that takes a grid, an [x y] pair, and a vector and produces a new
+    ;; grid that is the result of a single move from that position
+    ;; then we can call iterate on this sequence of coordinates (not reduce, as I still feel that the result should
+    ;; look like the thing passed in, more than superficially)
+    ))
+
 ;; Tiles on the grid
 ;; What does a move look like?
 ;; GameManager.prototype.move is the JS function that does this
