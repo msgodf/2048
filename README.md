@@ -6,7 +6,7 @@ The original JavaScript version of the game is by Gabriele Cirulli (and others) 
 
 # Example
 
-
+```
 (defn example-game
   []
   (print-grid
@@ -22,3 +22,4 @@ The original JavaScript version of the game is by Gabriele Cirulli (and others) 
          (up)
          (left)
          (down)))))
+```
