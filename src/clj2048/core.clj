@@ -8,10 +8,6 @@
 
 (defn within-bounds
   [grid x y]
-  #_(prn "Within bounds? " x y (and (>= x 0)
-       (< x (count (first grid)))
-       (>= y 0)
-       (< y (count grid))))
   (and (>= x 0)
        (< x (count (first grid)))
        (>= y 0)
