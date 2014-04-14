@@ -44,10 +44,10 @@
 (defn direction-to-vector
   [v]
   (condp = v
-    0 {:x 0 :y -1}
-    1 {:x 1 :y 0}
-    2 {:x 0 :y 1}
-    3 {:x -1 :y 0}))
+    :up {:x 0 :y -1}
+    :right {:x 1 :y 0}
+    :down {:x 0 :y 1}
+    :left {:x -1 :y 0}))
 
 (defn build-traversals
   [grid v]
