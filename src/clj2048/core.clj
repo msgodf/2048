@@ -172,6 +172,22 @@
       (move direction)
       (spawn rng)))
 
+(defn example-game
+  []
+  (print-grid
+   (let [rng (java.util.Random. 1)
+         left #(move-and-spawn %1 :left rng)
+         right #(move-and-spawn %1 :right rng)
+         up #(move-and-spawn %1 :up rng)
+         down #(move-and-spawn %1 :down rng)]
+     (-> (make-grid 4)
+         (spawn rng)
+         (spawn rng)
+         (right)
+         (up)
+         (left)
+         (down)))))
+
 (defn -main
   [& args]
   (println args))
