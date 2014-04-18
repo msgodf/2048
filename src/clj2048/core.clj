@@ -42,8 +42,9 @@
     :left {:x -1 :y 0}))
 
 (defn build-traversals
-  [grid {:keys [x y]}]
-  (let [xs (range (count (first grid)))
+  [grid direction]
+  (let [{:keys [x y]} (direction-to-vector direction)
+        xs (range (count (first grid)))
         ys (range (count grid))]
     {:x (if (= x 1)
           (reverse xs)
@@ -80,8 +81,9 @@
 
 (defn find-farthest-position
   "Find the last cell either before the edge of the grid, or another tile, from the specified position in the direction specified by the vector"
-  [grid [ox oy] {dx :x dy :y}]
-  (let [[f b] (split-with (fn [pos] (and (within-bounds grid pos)
+  [grid [ox oy] direction]
+  (let [{dx :x dy :y} (direction-to-vector direction)
+        [f b] (split-with (fn [pos] (and (within-bounds grid pos)
                                         (cell-available grid pos)))
                           (for [v (map inc (range))]
                             [(+ ox (* dx v))
@@ -120,16 +122,17 @@
                                              4)))))
 
 (defn move-single
-  [grid merged-tiles pos v]
+  [grid merged-tiles pos direction]
   (if-let [tile (get-from-grid grid pos)]
-    (let [positions (find-farthest-position grid pos v)]
+    (let [positions (find-farthest-position grid pos direction)]
       (if-let [next-tile (can-merge grid merged-tiles positions tile)]
         {:grid (-> grid
                    (set-in-grid pos nil)
                    (set-in-grid (:next positions)
                                 (+ tile
                                    next-tile)))
-         :merged-tiles (conj merged-tiles (:next positions))}
+         :merged-tiles (conj merged-tiles
+                             (:next positions))}
         {:grid (-> grid
                    (set-in-grid pos nil)
                    (set-in-grid (:farthest positions)
@@ -140,22 +143,21 @@
 
 (defn move
   [grid direction]
-  (let [v (direction-to-vector direction)
-        {xs :x ys :y} (build-traversals grid v)]
-    (:grid (first
-            (drop-while
-             #(not-empty (:coordinates %))
-             (iterate (fn [{:keys [grid coordinates merged-tiles] :as current}]
-                        (if (empty? coordinates)
-                          current
-                          (let [[pos & rest] coordinates
-                                {:keys [grid merged-tiles]} (move-single grid merged-tiles pos v)]
-                            {:grid grid
-                             :merged-tiles merged-tiles
-                             :coordinates rest})))
-                      {:grid grid
-                       :merged-tiles #{}
-                       :coordinates (for [x xs y ys] [x y])}))))))
+  (:grid (first
+          (drop-while
+           #(not-empty (:coordinates %))
+           (iterate (fn [{:keys [grid coordinates merged-tiles] :as current}]
+                      (if (empty? coordinates)
+                        current
+                        (let [[pos & rest] coordinates
+                              {:keys [grid merged-tiles]} (move-single grid merged-tiles pos direction)]
+                          {:grid grid
+                           :merged-tiles merged-tiles
+                           :coordinates rest})))
+                    {:grid grid
+                     :merged-tiles #{}
+                     :coordinates (let [{xs :x ys :y} (build-traversals grid direction)]
+                                    (for [x xs y ys] [x y]))})))))
 
 (defn move-and-spawn
   [grid direction rng]
