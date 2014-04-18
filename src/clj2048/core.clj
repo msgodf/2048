@@ -77,7 +77,8 @@
 
 (defn random-available-cell
   [generator grid]
-  (random-item generator (available-cells grid)))
+  (random-item generator
+               (available-cells grid)))
 
 (defn find-farthest-position
   "Find the last cell either before the edge of the grid, or another tile, from the specified position in the direction specified by the vector"
@@ -99,9 +100,9 @@
     (when (within-bounds grid pos)
       (let [next-tile (get-from-grid grid pos)]
         (when (and next-tile
-                   (= tile
-                      next-tile)
-                   (not (some #{pos} merged-tiles)))
+                   (= tile next-tile)
+                   (not (some #{pos}
+                              merged-tiles)))
           next-tile)))))
 
 (defn print-grid
@@ -117,9 +118,11 @@
 (defn spawn
   [grid generator]
   (let [pos (random-available-cell generator grid)]
-    (set-in-grid grid pos (random-item generator
-                                       (conj (repeat 9 2)
-                                             4)))))
+    (set-in-grid grid
+                 pos
+                 (random-item generator
+                              (conj (repeat 9 2)
+                                    4)))))
 
 (defn move-single
   [grid merged-tiles pos direction]
@@ -150,13 +153,17 @@
                       (if (empty? coordinates)
                         current
                         (let [[pos & rest] coordinates
-                              {:keys [grid merged-tiles]} (move-single grid merged-tiles pos direction)]
+                              {:keys [grid merged-tiles]} (move-single grid
+                                                                       merged-tiles
+                                                                       pos
+                                                                       direction)]
                           {:grid grid
                            :merged-tiles merged-tiles
                            :coordinates rest})))
                     {:grid grid
                      :merged-tiles #{}
-                     :coordinates (let [{xs :x ys :y} (build-traversals grid direction)]
+                     :coordinates (let [{xs :x ys :y} (build-traversals grid
+                                                                        direction)]
                                     (for [x xs y ys] [x y]))})))))
 
 (defn move-and-spawn
