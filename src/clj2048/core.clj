@@ -88,10 +88,9 @@
                           (for [v (map inc (range))]
                             [(+ ox (* dx v))
                              (+ oy (* dy v))]))]
-    (cond (= (count f) 0) {:farthest [ox oy]
-                           :next (first b)}
-          :otherwise {:farthest (last f)
-                      :next (first b)})))
+    {:farthest (or (last f)
+                   [ox oy])
+     :next (first b)}))
 
 (defn can-merge
   [grid positions tile]
