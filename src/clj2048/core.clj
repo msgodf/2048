@@ -172,21 +172,21 @@
       (move direction)
       (spawn rng)))
 
+(defn apply-moves
+  [grid rng moves]
+  (reduce (fn [grid i] (move-and-spawn grid i rng))
+          grid
+          moves))
+
 (defn example-game
   []
   (print-grid
-   (let [rng (java.util.Random. 1)
-         left #(move-and-spawn %1 :left rng)
-         right #(move-and-spawn %1 :right rng)
-         up #(move-and-spawn %1 :up rng)
-         down #(move-and-spawn %1 :down rng)]
+   (let [rng (java.util.Random. 1)]
      (-> (make-grid 4)
          (spawn rng)
          (spawn rng)
-         (right)
-         (up)
-         (left)
-         (down)))))
+         (apply-moves rng
+                      [:right :up :left :down :left])))))
 
 (defn -main
   [& args]
