@@ -9,24 +9,23 @@
 
 (defn get-from-grid
   [grid x y]
-  (when (within-bounds grid x y)
-    (-> grid
-        (nth y)
-        (nth x))))
+  {:pre [(within-bounds grid x y)]}
+  (-> grid
+      (nth y)
+      (nth x)))
 
 (defn set-in-grid
   [grid x y value]
-  (when (and (< x (count (first grid)))
-             (< y (count grid)))
-    (let [[before after] (split-at y
-                                   grid)]
-      (concat before
-              (vector (let [[before after] (split-at x
-                                                     (first after))]
-                        (concat before
-                                (vector value)
-                                (rest after))))
-              (rest after)))))
+  {:pre [ (within-bounds grid x y)]}
+  (let [[before after] (split-at y
+                                 grid)]
+    (concat before
+            (vector (let [[before after] (split-at x
+                                                   (first after))]
+                      (concat before
+                              (vector value)
+                              (rest after))))
+            (rest after))))
 
 (defn make-grid
   [n]
@@ -94,14 +93,15 @@
 
 (defn can-merge
   [grid merged-tiles positions tile]
-  (when (:next positions)
-    (let [[x y] (:next positions)
-          next-tile (get-from-grid grid x y)]
-      (when (and next-tile
-                 (= tile
-                    next-tile)
-                 (not (some #{[x y]} merged-tiles)))
-        next-tile))))
+  {:pre [(:next positions)]}
+  (let [[x y] (:next positions)]
+    (when (within-bounds grid x y)
+      (let [next-tile (get-from-grid grid x y)]
+        (when (and next-tile
+                   (= tile
+                      next-tile)
+                   (not (some #{[x y]} merged-tiles)))
+          next-tile)))))
 
 (defn print-grid
   [grid]
