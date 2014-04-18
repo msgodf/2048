@@ -9,17 +9,11 @@ The original JavaScript version of the game is by Gabriele Cirulli (and others) 
 ```clj
 (defn example-game
   []
-  (print-grid
-   (let [rng (java.util.Random. 1)
-         left #(move-and-spawn %1 :left rng)
-         right #(move-and-spawn %1 :right rng)
-         up #(move-and-spawn %1 :up rng)
-         down #(move-and-spawn %1 :down rng)]
-     (-> (make-grid 4)
-         (spawn rng)
-         (spawn rng)
-         (right)
-         (up)
-         (left)
-         (down)))))
+  (game 1 [:right :up :left :down :left]))
+```
+
+The game can also be played (albeit slowly, as this will start a new JVM each time) by using `lein run`
+
+```bash
+lein run 1 right up left down left
 ```
