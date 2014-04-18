@@ -178,16 +178,23 @@
           grid
           moves))
 
-(defn example-game
-  []
+(defn game
+  [seed moves]
   (print-grid
-   (let [rng (java.util.Random. 1)]
+   (let [rng (java.util.Random. seed)]
      (-> (make-grid 4)
          (spawn rng)
          (spawn rng)
          (apply-moves rng
-                      [:right :up :left :down :left])))))
+                      moves)))))
+
+(defn example-game
+  []
+  (game 1 [:right :up :left :down :left]))
 
 (defn -main
   [& args]
-  (example-game))
+  (if (empty? args)
+    (example-game)
+    (game (Integer/parseInt (first args))
+          (map keyword (rest args)))))
