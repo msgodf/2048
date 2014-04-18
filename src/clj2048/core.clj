@@ -183,4 +183,4 @@
 
 (defn -main
   [& args]
-  (println args))
+  (example-game))
