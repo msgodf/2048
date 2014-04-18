@@ -32,8 +32,7 @@
   [n]
   (repeat n
           (repeat n
-                  {:previously-merged false
-                   :value nil})))
+                  {:value nil})))
 
 (defn direction-to-vector
   [v]
@@ -102,7 +101,7 @@
       (when (and next-tile
                  (= (:value tile)
                     (:value next-tile))
-                 (not (:previously-merged next-tile)))
+                 (nil? (:previously-merged next-tile)))
         next-tile))))
 
 (defn move-single
@@ -113,17 +112,14 @@
         (if-let [next-tile (can-merge grid positions tile)]
           (let [[nx ny] (:next positions)]
             (-> grid
-                (set-in-grid x y {:previously-merged false
-                                  :value nil})
+                (set-in-grid x y {:value nil})
                 (set-in-grid nx ny {:previously-merged true
                                     :value (+ (:value tile)
                                               (:value next-tile))})))
           (let [[nx ny] (:farthest positions)]
             (-> grid
-                (set-in-grid x y {:previously-merged false
-                                  :value nil})
-                (set-in-grid nx ny {:previously-merged false
-                                    :value (:value tile)})))))
+                (set-in-grid x y  {:value nil})
+                (set-in-grid nx ny {:value (:value tile)})))))
       grid)))
 
 (defn print-grid
@@ -139,14 +135,13 @@
 (defn spawn
   [grid generator]
   (let [[x y] (random-available-cell generator grid)]
-    (set-in-grid grid x y {:previously-merged false
-                           :value (random-item generator
+    (set-in-grid grid x y {:value (random-item generator
                                                (conj (repeat 9 2)
                                                      4))})))
 
 (defn remove-merge-information
   [grid]
-  (map #(map (fn [element] (assoc element :previously-merged false))
+  (map #(map (fn [element] (dissoc element :previously-merged))
              %)
        grid))
 
