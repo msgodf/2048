@@ -1,22 +1,22 @@
 (ns clj2048.core)
 
 (defn within-bounds
-  [grid x y]
+  [grid [x y]]
   (and (>= x 0)
        (< x (count (first grid)))
        (>= y 0)
        (< y (count grid))))
 
 (defn get-from-grid
-  [grid x y]
-  {:pre [(within-bounds grid x y)]}
+  [grid [x y]]
+  {:pre [(within-bounds grid [x y])]}
   (-> grid
       (nth y)
       (nth x)))
 
 (defn set-in-grid
-  [grid x y value]
-  {:pre [ (within-bounds grid x y)]}
+  [grid [x y] value]
+  {:pre [ (within-bounds grid [x y])]}
   (let [[before after] (split-at y
                                  grid)]
     (concat before
@@ -54,16 +54,15 @@
 
 (defn cell-available
   "Check whether the map at [x y] in the grid has a nil :value"
-  [grid x y]
-  (nil? (get-from-grid grid x y)))
+  [grid pos]
+  (nil? (get-from-grid grid pos)))
 
 (defn available-cells
   [grid]
-  (remove nil?
+  (filter (fn [pos] (cell-available grid pos))
           (for [x (range (count (first grid)))
                 y (range (count grid))]
-            (when (cell-available grid x y)
-              [x y]))))
+            [x y])))
 
 ;; from data.generators, but with a java.util.Random as the first argument
 (defn uniform
@@ -81,9 +80,9 @@
 
 (defn find-farthest-position
   "Find the last cell either before the edge of the grid, or another tile, from the specified position in the direction specified by the vector"
-  [grid ox oy {dx :x dy :y}]
-  (let [[f b] (split-with (fn [[x y]] (and (within-bounds grid x y)
-                                          (cell-available grid x y)))
+  [grid [ox oy] {dx :x dy :y}]
+  (let [[f b] (split-with (fn [pos] (and (within-bounds grid pos)
+                                        (cell-available grid pos)))
                           (for [v (map inc (range))]
                             [(+ ox (* dx v))
                              (+ oy (* dy v))]))]
@@ -94,13 +93,13 @@
 (defn can-merge
   [grid merged-tiles positions tile]
   {:pre [(:next positions)]}
-  (let [[x y] (:next positions)]
-    (when (within-bounds grid x y)
-      (let [next-tile (get-from-grid grid x y)]
+  (let [pos (:next positions)]
+    (when (within-bounds grid pos)
+      (let [next-tile (get-from-grid grid pos)]
         (when (and next-tile
                    (= tile
                       next-tile)
-                   (not (some #{[x y]} merged-tiles)))
+                   (not (some #{pos} merged-tiles)))
           next-tile)))))
 
 (defn print-grid
@@ -115,27 +114,27 @@
 
 (defn spawn
   [grid generator]
-  (let [[x y] (random-available-cell generator grid)]
-    (set-in-grid grid x y (random-item generator
+  (let [pos (random-available-cell generator grid)]
+    (set-in-grid grid pos (random-item generator
                                        (conj (repeat 9 2)
                                              4)))))
 
 (defn move-single
-  [grid merged-tiles x y v]
-  (if-let [tile (get-from-grid grid x y)]
-    (let [positions (find-farthest-position grid x y v)]
+  [grid merged-tiles pos v]
+  (if-let [tile (get-from-grid grid pos)]
+    (let [positions (find-farthest-position grid pos v)]
       (if-let [next-tile (can-merge grid merged-tiles positions tile)]
-        (let [[nx ny] (:next positions)]
-          {:grid (-> grid
-                     (set-in-grid x y nil)
-                     (set-in-grid nx ny (+ tile
-                                           next-tile)))
-           :merged-tiles (conj merged-tiles [nx ny])})
-        (let [[nx ny] (:farthest positions)]
-          {:grid (-> grid
-                     (set-in-grid x y nil)
-                     (set-in-grid nx ny tile))
-           :merged-tiles merged-tiles})))
+        {:grid (-> grid
+                   (set-in-grid pos nil)
+                   (set-in-grid (:next positions)
+                                (+ tile
+                                   next-tile)))
+         :merged-tiles (conj merged-tiles (:next positions))}
+        {:grid (-> grid
+                   (set-in-grid pos nil)
+                   (set-in-grid (:farthest positions)
+                                tile))
+         :merged-tiles merged-tiles}))
     {:grid grid
      :merged-tiles merged-tiles}))
 
@@ -149,11 +148,11 @@
              (iterate (fn [{:keys [grid coordinates merged-tiles] :as current}]
                         (if (empty? coordinates)
                           current
-                          (let [[[x y] & rest] coordinates]
-                            (let [{:keys [grid merged-tiles]} (move-single grid merged-tiles x y v)]
-                              {:grid grid
-                               :merged-tiles merged-tiles
-                               :coordinates rest}))))
+                          (let [[pos & rest] coordinates
+                                {:keys [grid merged-tiles]} (move-single grid merged-tiles pos v)]
+                            {:grid grid
+                             :merged-tiles merged-tiles
+                             :coordinates rest})))
                       {:grid grid
                        :merged-tiles #{}
                        :coordinates (for [x xs y ys] [x y])}))))))
