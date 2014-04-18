@@ -32,7 +32,7 @@
   [n]
   (repeat n
           (repeat n
-                  {:value nil})))
+                  nil)))
 
 (defn direction-to-vector
   [v]
@@ -56,7 +56,7 @@
 (defn cell-available
   "Check whether the map at [x y] in the grid has a nil :value"
   [grid x y]
-  (nil? (:value (get-from-grid grid x y))))
+  (nil? (get-from-grid grid x y)))
 
 (defn available-cells
   [grid]
@@ -93,40 +93,22 @@
      :next (first b)}))
 
 (defn can-merge
-  [grid positions tile]
+  [grid merged-tiles positions tile]
   (when (:next positions)
     (let [[x y] (:next positions)
-          next-tile (get-from-grid grid  x y)]
+          next-tile (get-from-grid grid x y)]
       (when (and next-tile
-                 (= (:value tile)
-                    (:value next-tile))
-                 (nil? (:previously-merged next-tile)))
+                 (= tile
+                    next-tile)
+                 (not (some #{[x y]} merged-tiles)))
         next-tile))))
-
-(defn move-single
-  [grid x y v]
-  (let [tile (get-from-grid grid x y)]
-    (if (:value tile)
-      (let [positions (find-farthest-position grid x y v)]
-        (if-let [next-tile (can-merge grid positions tile)]
-          (let [[nx ny] (:next positions)]
-            (-> grid
-                (set-in-grid x y {:value nil})
-                (set-in-grid nx ny {:previously-merged true
-                                    :value (+ (:value tile)
-                                              (:value next-tile))})))
-          (let [[nx ny] (:farthest positions)]
-            (-> grid
-                (set-in-grid x y  {:value nil})
-                (set-in-grid nx ny {:value (:value tile)})))))
-      grid)))
 
 (defn print-grid
   [grid]
   (println (clojure.string/join "\n"
-                                (map #(clojure.string/join (map (fn [v] (if (:value v)
+                                (map #(clojure.string/join (map (fn [v] (if v
                                                                          (format "%5d     "
-                                                                                 (:value v))
+                                                                                 v)
                                                                          "    -     "))
                                                                 %))
                                      grid))))
@@ -134,31 +116,47 @@
 (defn spawn
   [grid generator]
   (let [[x y] (random-available-cell generator grid)]
-    (set-in-grid grid x y {:value (random-item generator
-                                               (conj (repeat 9 2)
-                                                     4))})))
+    (set-in-grid grid x y (random-item generator
+                                       (conj (repeat 9 2)
+                                             4)))))
 
-(defn remove-merge-information
-  [grid]
-  (map #(map (fn [element] (dissoc element :previously-merged))
-             %)
-       grid))
+(defn move-single
+  [grid merged-tiles x y v]
+  (if-let [tile (get-from-grid grid x y)]
+    (let [positions (find-farthest-position grid x y v)]
+      (if-let [next-tile (can-merge grid merged-tiles positions tile)]
+        (let [[nx ny] (:next positions)]
+          {:grid (-> grid
+                     (set-in-grid x y nil)
+                     (set-in-grid nx ny (+ tile
+                                           next-tile)))
+           :merged-tiles (conj merged-tiles [nx ny])})
+        (let [[nx ny] (:farthest positions)]
+          {:grid (-> grid
+                     (set-in-grid x y nil)
+                     (set-in-grid nx ny tile))
+           :merged-tiles merged-tiles})))
+    {:grid grid
+     :merged-tiles merged-tiles}))
 
 (defn move
   [grid direction]
   (let [v (direction-to-vector direction)
         {xs :x ys :y} (build-traversals grid v)]
-    (remove-merge-information (:grid (first
-                                      (drop-while
-                                       #(not-empty (:coordinates %))
-                                       (iterate (fn [{:keys [grid coordinates] :as current}]
-                                                  (if (empty? coordinates)
-                                                    current
-                                                    (let [[[x y] & rest] coordinates]
-                                                      {:grid (move-single grid x y v)
-                                                       :coordinates rest})))
-                                                {:grid grid
-                                                 :coordinates (for [x xs y ys] [x y])})))))))
+    (:grid (first
+            (drop-while
+             #(not-empty (:coordinates %))
+             (iterate (fn [{:keys [grid coordinates merged-tiles] :as current}]
+                        (if (empty? coordinates)
+                          current
+                          (let [[[x y] & rest] coordinates]
+                            (let [{:keys [grid merged-tiles]} (move-single grid merged-tiles x y v)]
+                              {:grid grid
+                               :merged-tiles merged-tiles
+                               :coordinates rest}))))
+                      {:grid grid
+                       :merged-tiles #{}
+                       :coordinates (for [x xs y ys] [x y])}))))))
 
 (defn move-and-spawn
   [grid direction rng]
