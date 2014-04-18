@@ -42,13 +42,13 @@
     :left {:x -1 :y 0}))
 
 (defn build-traversals
-  [grid v]
+  [grid {:keys [x y]}]
   (let [xs (range (count (first grid)))
         ys (range (count grid))]
-    {:x (if (= (:x v) 1)
+    {:x (if (= x 1)
           (reverse xs)
           xs)
-     :y (if (= (:y v) 1)
+     :y (if (= y 1)
           (reverse ys)
           ys)}))
 
