@@ -205,13 +205,22 @@
          (apply-moves rng
                       moves)))))
 
-(defn example-game
+(defn left-up-moves
+  [n]
+  (into []
+        (take n (cycle [:left :up]))))
+
+(defn winning-game
+  "Example 1039-move winning game, using only left and up moves followed by occasional down moves"
   []
-  (game 1 [:right :up :left :down :left]))
+  (game 1
+        (concat (mapcat #(concat (left-up-moves %)
+                                 [:down])
+                        [166 34 10 70 40 40 30 14 8 4 10 20 12 20 4 6 4 4 4 4 2 2 2 6 6 6 40 10 10 10 4 4 10 10 10 10 4 4 4 4 4 4 4 4 4 2 2 2 2 10 10 4 4 4 2 2 2 2 2 2 8 10 4 50 30 22 6 22 10 4 4 14 4 4 26 8 2]))))
 
 (defn -main
   [& args]
   (if (empty? args)
-    (example-game)
+    (winning-game)
     (game (Integer/parseInt (first args))
           (map keyword (rest args)))))
