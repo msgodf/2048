@@ -118,6 +118,7 @@
 
 (defn spawn
   [grid generator]
+  {:pre [(not-empty (available-cells grid))]}
   (let [pos (random-available-cell generator grid)]
     (set-in-grid grid
                  pos
@@ -169,9 +170,10 @@
 
 (defn move-and-spawn
   [grid direction rng]
-  (-> grid
-      (move direction)
-      (spawn rng)))
+  (let [grid (move grid direction)]
+    (if (not-empty (available-cells grid))
+      (spawn grid rng)
+      grid)))
 
 (defn apply-moves
   [grid rng moves]
