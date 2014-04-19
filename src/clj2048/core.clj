@@ -24,8 +24,8 @@
                                                    (first after))]
                       (concat before
                               (vector value)
-                              (rest after))))
-            (rest after))))
+                              (next after))))
+            (next after))))
 
 (defn make-grid
   [n]
