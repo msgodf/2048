@@ -175,6 +175,20 @@
       (spawn grid rng)
       grid)))
 
+(defn moves-available
+  [grid]
+  (or (not-empty (available-cells grid))
+      (some true?
+            (for [x (range (count (first grid)))
+                  y (range (count grid))
+                  direction [:up :right :down :left]]
+              (if-let [this (get-from-grid grid [x y])]
+                (let [{dx :x dy :y} (direction-to-vector direction)
+                      nx (+ x dx)
+                      ny (+ y dy)]
+                  (when (within-bounds grid [nx ny])
+                    (when-let [other (get-from-grid grid [nx ny])]
+                      (= this other)))))))))
 (defn apply-moves
   [grid rng moves]
   (reduce (fn [grid i] (move-and-spawn grid i rng))
