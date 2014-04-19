@@ -68,8 +68,9 @@
 ;; from data.generators, but with a java.util.Random as the first argument
 (defn uniform
   "Uniform distribution from lo (inclusive) to high (exclusive)."
-  (^long [rnd lo hi] {:pre [(< lo hi)]}
-        (clojure.core/long (Math/floor (+ lo (* (.nextDouble rnd) (- hi lo)))))))
+  (^long [rnd lo hi]
+         {:pre [(< lo hi)]}
+         (clojure.core/long (Math/floor (+ lo (* (.nextDouble rnd) (- hi lo)))))))
 
 (defn random-item
   [generator coll]
