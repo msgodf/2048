@@ -148,25 +148,21 @@
 
 (defn move
   [grid direction]
-  (:grid (first
-          (drop-while
-           #(not-empty (:coordinates %))
-           (iterate (fn [{:keys [grid coordinates merged-tiles] :as current}]
-                      (if (empty? coordinates)
-                        current
-                        (let [[pos & rest] coordinates
-                              {:keys [grid merged-tiles]} (move-single grid
-                                                                       merged-tiles
-                                                                       pos
-                                                                       direction)]
-                          {:grid grid
-                           :merged-tiles merged-tiles
-                           :coordinates rest})))
-                    {:grid grid
-                     :merged-tiles #{}
-                     :coordinates (let [{xs :x ys :y} (build-traversals grid
-                                                                        direction)]
-                                    (for [x xs y ys] [x y]))})))))
+  (:grid (reduce (fn [{:keys [grid merged-tiles]} pos]
+                   (let [{:keys [grid merged-tiles]} (move-single grid
+                                                                  merged-tiles
+                                                                  pos
+                                                                  direction)]
+                     {:grid grid
+                      :merged-tiles merged-tiles}))
+
+                 {:grid grid
+                  :merged-tiles #{}}
+
+                 (let [{xs :x ys :y}
+                       (build-traversals grid
+                                         direction)]
+                   (for [x xs y ys] [x y])))))
 
 (defn move-and-spawn
   [grid direction rng]
